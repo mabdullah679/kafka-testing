@@ -3,7 +3,7 @@
 set -euo pipefail
 
 # Config
-PROJECT_DIR="/Volumes/DevXLab/Dev/kafka-testing"
+PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SCRIPT_PATH="$PROJECT_DIR/run-kafka-testing.sh"
 ALIAS_NAME="prov-kafka-test-env"
 ALIAS_COMMAND="alias $ALIAS_NAME='$SCRIPT_PATH'"

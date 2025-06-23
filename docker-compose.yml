@@ -1,14 +1,51 @@
+version: "3.8"
+
 services:
+  vm1-app:
+    build:
+      context: ./vm1-app
+    container_name: vm1-app
+    volumes:
+      - kafka-audit-logs:/app/logs:ro
+    networks:
+      - kafka-net
+    stdin_open: true
+    tty: true
+
+  vm2-app:
+    build:
+      context: ./vm2-app
+    container_name: vm2-app
+    volumes:
+      - kafka-audit-logs:/app/logs:ro
+    networks:
+      - kafka-net
+    stdin_open: true
+    tty: true
+
+  vm3-app:
+    build:
+      context: ./vm3-app
+    container_name: vm3-app
+    volumes:
+      - kafka-audit-logs:/app/logs
+    networks:
+      - kafka-net
+    stdin_open: true
+    tty: true
+
   zookeeper:
-    image: confluentinc/cp-zookeeper:7.4.0
+    image: confluentinc/cp-zookeeper:7.5.0
+    container_name: zookeeper
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
-    ports:
-      - "2181:2181"
+    networks:
+      - kafka-net
 
   kafka:
-    image: confluentinc/cp-kafka:7.4.0
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: kafka
     depends_on:
       - zookeeper
     ports:
@@ -16,39 +53,14 @@ services:
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"  # <-- 🔒 LOCKED
-      
-  vm1-app:
-    build:
-      context: ./vm1-app
-    container_name: kafka-testing-vm1-app
-    volumes:
-      - vm1-logs:/app/logs
-
-  vm2-app:
-    build:
-      context: ./vm2-app
-    container_name: kafka-testing-vm2-app
-    volumes:
-      - vm2-logs:/app/logs
-
-  vm3-app:
-    build:
-      context: ./vm3-app
-    container_name: kafka-testing-vm3-app
-    volumes:
-      - vm3-audit:/app/audit
-    healthcheck:
-      test: ["CMD", "bash", "-c", "./broker-handler.sh --healthcheck"]
-      interval: 10s
-      timeout: 3s
-      retries: 3
-      start_period: 5s
+    networks:
+      - kafka-net
 
 volumes:
-  vm1-logs:
-  vm2-logs:
-  vm3-audit:
+  kafka-audit-logs:
+
+networks:
+  kafka-net:

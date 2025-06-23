@@ -1,0 +1,496 @@
+--- ./docker-compose.yml ---
+version: "3.8"
+
+services:
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.4.0
+    container_name: kafka-zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+
+  kafka:
+    image: confluentinc/cp-kafka:7.4.0
+    container_name: kafka-broker
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka-broker:9092  # ‚úÖ FIXED
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+    ports:
+      - "9092:9092"
+
+  kafka-eclient1-app:
+    build:
+      context: ./vm1-app
+    image: kafka-eclient1-app:latest
+    container_name: kafka-eclient1-app
+    depends_on:
+      - kafka
+    stdin_open: true
+    tty: true
+    command: ["sh", "-c", "while true; do sleep 60; done"]
+    volumes:
+      - vm1-logs:/app/logs
+
+  kafka-eclient2-app:
+    build:
+      context: ./vm2-app
+    image: kafka-eclient2-app:latest
+    container_name: kafka-eclient2-app
+    depends_on:
+      - kafka
+    stdin_open: true
+    tty: true
+    command: ["sh", "-c", "while true; do sleep 60; done"]
+    volumes:
+      - vm2-logs:/app/logs
+
+  kafka-host-app:
+    build:
+      context: ./vm3-app
+    image: kafka-host-app:latest
+    container_name: kafka-host-app
+    depends_on:
+      - kafka
+    stdin_open: true
+    tty: true
+    command: ["sh", "-c", "while true; do sleep 60; done"]
+    volumes:
+      - vm3-audit:/app/audit
+    healthcheck:
+      test: ["CMD", "java", "-jar", "/app/app.jar", "--healthcheck"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+
+volumes:
+  vm1-logs:
+  vm2-logs:
+  vm3-audit:--- ./vm3-app/Dockerfile ---
+# ---- Build Stage ----
+FROM eclipse-temurin:17-jdk-alpine AS build
+
+WORKDIR /app
+
+RUN apk add --no-cache maven
+
+COPY . .
+
+RUN mvn clean package -Dmaven.test.skip=true
+
+# ---- Runtime Stage ----
+FROM eclipse-temurin:17-jdk-alpine
+
+WORKDIR /app
+
+COPY --from=build /app/target/*-jar-with-dependencies.jar app.jar
+
+ENTRYPOINT ["java", "-jar", "app.jar"]--- ./vm3-app/src/main/java/com/demo/vm3/BrokerHandlerApp.java ---
+package com.demo.vm3;
+
+import org.apache.kafka.clients.admin.*;
+import org.apache.kafka.clients.consumer.*;
+import org.apache.kafka.common.serialization.StringDeserializer;
+
+import java.time.Duration;
+import java.util.*;
+
+public class BrokerHandlerApp {
+
+    private static final String TOPIC = "global.chat";
+    private static final String GROUP_ID = "broker-group";
+    private static final String BOOTSTRAP_SERVERS = "kafka-broker:9092";
+
+    public static void main(String[] args) {
+        System.out.println("‚è≥ Starting Kafka Broker Handler...");
+        createTopicIfNotExists();
+        consumeMessages();
+    }
+
+    private static void createTopicIfNotExists() {
+        Properties props = new Properties();
+        props.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS);
+
+        try (AdminClient adminClient = AdminClient.create(props)) {
+            Set<String> topics = adminClient.listTopics().names().get();
+            if (!topics.contains(TOPIC)) {
+                NewTopic newTopic = new NewTopic(TOPIC, 1, (short) 1);
+                adminClient.createTopics(Collections.singletonList(newTopic)).all().get();
+                System.out.println("‚úÖ Created topic: " + TOPIC);
+            } else {
+                System.out.println("‚ÑπÔ∏è Topic already exists: " + TOPIC);
+            }
+        } catch (Exception e) {
+            System.err.println("‚ùå Failed to create topic: " + e.getMessage());
+        }
+    }
+
+    private static void consumeMessages() {
+        Properties props = new Properties();
+        props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS);
+        props.put(ConsumerConfig.GROUP_ID_CONFIG, GROUP_ID);
+        props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "true");
+        props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+
+        try (KafkaConsumer<String, String> consumer = new KafkaConsumer<>(props)) {
+            consumer.subscribe(Collections.singletonList(TOPIC));
+            System.out.println("üü¢ Broker listening on global.chat. Messages:");
+            while (true) {
+                ConsumerRecords<String, String> records = consumer.poll(Duration.ofMillis(500));
+                for (ConsumerRecord<String, String> record : records) {
+                    System.out.printf("üì• [%s] %s%n", record.key(), record.value());
+                }
+            }
+        }
+    }
+}--- ./vm3-app/pom.xml ---
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+                             http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.demo.vm3</groupId>
+    <artifactId>kafka-host</artifactId>
+    <version>1.0</version>
+    <packaging>jar</packaging>
+
+    <properties>
+        <maven.compiler.source>17</maven.compiler.source>
+        <maven.compiler.target>17</maven.compiler.target>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.apache.kafka</groupId>
+            <artifactId>kafka-clients</artifactId>
+            <version>3.7.0</version>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <artifactId>maven-assembly-plugin</artifactId>
+                <version>3.3.0</version>
+                <configuration>
+                    <archive>
+                        <manifest>
+                            <mainClass>com.demo.vm3.BrokerHandlerApp</mainClass>
+                        </manifest>
+                    </archive>
+                    <descriptorRefs>
+                        <descriptorRef>jar-with-dependencies</descriptorRef>
+                    </descriptorRefs>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>make-assembly</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>single</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+</project>
+--- ./vm1-app/Dockerfile ---
+FROM eclipse-temurin:17-jdk-alpine
+WORKDIR /app
+
+# Install Maven
+RUN apk add --no-cache maven
+
+# Copy source and build
+COPY . .
+RUN mvn clean package -Dmaven.test.skip=true
+
+# Use the correct fat JAR output
+RUN cp target/kafka-eclient1-1.0-jar-with-dependencies.jar app.jar
+
+CMD ["java", "-jar", "app.jar"]--- ./vm1-app/pom.xml ---
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+                             http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.demo.vm1</groupId>
+    <artifactId>kafka-eclient1</artifactId>
+    <version>1.0</version>
+    <packaging>jar</packaging>
+
+    <name>Kafka EClient1 App</name>
+
+    <properties>
+        <maven.compiler.source>17</maven.compiler.source>
+        <maven.compiler.target>17</maven.compiler.target>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.apache.kafka</groupId>
+            <artifactId>kafka-clients</artifactId>
+            <version>3.7.0</version>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <!-- Makes a self-contained jar -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-assembly-plugin</artifactId>
+                <version>3.3.0</version>
+                <configuration>
+                    <archive>
+                        <manifest>
+                            <mainClass>com.demo.vm1.ChatClientApp</mainClass>
+                        </manifest>
+                    </archive>
+                    <descriptorRefs>
+                        <descriptorRef>jar-with-dependencies</descriptorRef>
+                    </descriptorRefs>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>make-assembly</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>single</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+</project>--- ./vm1-app/src/main/java/com/demo/vm1/ChatClientApp.java ---
+package com.demo.vm1;
+
+import org.apache.kafka.clients.consumer.*;
+import org.apache.kafka.clients.producer.*;
+import org.apache.kafka.common.serialization.StringDeserializer;
+import org.apache.kafka.common.serialization.StringSerializer;
+
+import java.time.Duration;
+import java.util.*;
+
+public class ChatClientApp {
+
+    private static final String CLIENT_ID = "vm1";
+    private static final String TOPIC = "global.chat";
+    private static final String GROUP_ID = "client-group-vm1";
+    private static final String BOOTSTRAP_SERVERS = "kafka-broker:9092";
+
+    public static void main(String[] args) {
+        // Start consumer thread
+        new Thread(ChatClientApp::consumeMessages).start();
+
+        // Start interactive producer
+        produceMessages();
+    }
+
+    private static void consumeMessages() {
+        Properties props = new Properties();
+        props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS);
+        props.put(ConsumerConfig.GROUP_ID_CONFIG, GROUP_ID);
+        props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+        props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "true");
+        props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+
+        try (KafkaConsumer<String, String> consumer = new KafkaConsumer<>(props)) {
+            consumer.subscribe(Collections.singletonList(TOPIC));
+            while (true) {
+                ConsumerRecords<String, String> records = consumer.poll(Duration.ofMillis(200));
+                for (ConsumerRecord<String, String> record : records) {
+                    System.out.printf("üì• [%s] %s%n", record.key(), record.value());
+                }
+            }
+        }
+    }
+
+    private static void produceMessages() {
+        Properties props = new Properties();
+        props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS);
+        props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
+        props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
+
+        try (KafkaProducer<String, String> producer = new KafkaProducer<>(props);
+             Scanner scanner = new Scanner(System.in)) {
+
+            String envMsg = System.getenv("KAFKA_MSG");
+            if (envMsg != null && !envMsg.isBlank()) {
+                producer.send(new ProducerRecord<>(TOPIC, CLIENT_ID, envMsg));
+                System.out.println("‚úÖ Sent env message: " + envMsg);
+            }
+
+            System.out.println("üì§ Type messages to send to global.chat (type 'exit' to quit):");
+            while (scanner.hasNextLine()) {
+                String line = scanner.nextLine().trim();
+                if (line.equalsIgnoreCase("exit")) break;
+                producer.send(new ProducerRecord<>(TOPIC, CLIENT_ID, line));
+            }
+        }
+
+        System.out.println("üëã Exiting ChatClientApp.");
+    }
+}--- ./vm1-app/src/main/java/com/demo/vm1/._ChatClientApp.java ---
+    Mac OS X            	   2  ∞     ‚                                    ATTRˇˇ˚  ‚   ò                     ò     com.apple.provenance  ≠ãWÿ=˝TË                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            This resource fork intentionally left blank                                                                                                                                                                                                                            ˇˇ--- ./vm2-app/Dockerfile ---
+# ---- Build Stage ----
+FROM eclipse-temurin:17-jdk-alpine AS build
+
+WORKDIR /app
+
+RUN apk add --no-cache maven
+
+COPY . .
+
+RUN mvn clean package -Dmaven.test.skip=true
+
+# ---- Runtime Stage ----
+FROM eclipse-temurin:17-jdk-alpine
+
+WORKDIR /app
+
+COPY --from=build /app/target/*-jar-with-dependencies.jar app.jar
+
+ENTRYPOINT ["java", "-jar", "app.jar"]--- ./vm2-app/pom.xml ---
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+                             http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.demo.vm2</groupId>
+    <artifactId>kafka-eclient2</artifactId>
+    <version>1.0</version>
+    <packaging>jar</packaging>
+
+    <properties>
+        <maven.compiler.source>17</maven.compiler.source>
+        <maven.compiler.target>17</maven.compiler.target>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.apache.kafka</groupId>
+            <artifactId>kafka-clients</artifactId>
+            <version>3.7.0</version>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <artifactId>maven-assembly-plugin</artifactId>
+                <version>3.3.0</version>
+                <configuration>
+                    <archive>
+                        <manifest>
+                            <mainClass>com.demo.vm2.ChatClientApp</mainClass>
+                        </manifest>
+                    </archive>
+                    <descriptorRefs>
+                        <descriptorRef>jar-with-dependencies</descriptorRef>
+                    </descriptorRefs>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>make-assembly</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>single</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+</project>--- ./vm2-app/src/main/java/com/demo/vm2/ChatClientApp.java ---
+package com.demo.vm2;
+
+import org.apache.kafka.clients.consumer.*;
+import org.apache.kafka.clients.producer.*;
+import org.apache.kafka.common.serialization.StringDeserializer;
+import org.apache.kafka.common.serialization.StringSerializer;
+
+import java.time.Duration;
+import java.util.*;
+
+public class ChatClientApp {
+
+    private static final String CLIENT_ID = "vm2";
+    private static final String TOPIC = "global.chat";
+    private static final String GROUP_ID = "client-group-" + CLIENT_ID;
+    private static final String BOOTSTRAP_SERVERS = "kafka-broker:9092";
+
+    public static void main(String[] args) {
+        Thread consumerThread = new Thread(ChatClientApp::consumeMessages);
+        consumerThread.start();
+
+        produceMessages();
+
+        try {
+            consumerThread.join();
+        } catch (InterruptedException e) {
+            System.out.println("üëã Chat client shutting down.");
+        }
+    }
+
+    private static void consumeMessages() {
+        Properties props = new Properties();
+        props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS);
+        props.put(ConsumerConfig.GROUP_ID_CONFIG, GROUP_ID);
+        props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+        props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "true");
+        props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+
+        try (KafkaConsumer<String, String> consumer = new KafkaConsumer<>(props)) {
+            consumer.subscribe(Collections.singletonList(TOPIC));
+            while (true) {
+                ConsumerRecords<String, String> records = consumer.poll(Duration.ofMillis(200));
+                for (ConsumerRecord<String, String> record : records) {
+                    System.out.printf("üì• [%s] %s%n", record.key(), record.value());
+                }
+            }
+        }
+    }
+
+    private static void produceMessages() {
+        Properties props = new Properties();
+        props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS);
+        props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
+        props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
+
+        try (KafkaProducer<String, String> producer = new KafkaProducer<>(props);
+             Scanner scanner = new Scanner(System.in)) {
+
+            String envMsg = System.getenv("KAFKA_MSG");
+            if (envMsg != null && !envMsg.isBlank()) {
+                producer.send(new ProducerRecord<>(TOPIC, CLIENT_ID, envMsg));
+                System.out.println("‚úÖ Sent env message: " + envMsg);
+            }
+
+            System.out.println("üì§ Type messages to send to global.chat (type 'exit' to quit):");
+            while (scanner.hasNextLine()) {
+                String line = scanner.nextLine().trim();
+                if (line.equalsIgnoreCase("exit")) break;
+                producer.send(new ProducerRecord<>(TOPIC, CLIENT_ID, line));
+            }
+        }
+    }
+}--- ./vm2-app/src/main/java/com/demo/vm2/._ChatClientApp.java ---
+    Mac OS X            	   2  ∞     ‚                                    ATTRˇˇ˚  ‚   ò                     ò     com.apple.provenance  ≠ãWÿ=˝TË                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            This resource fork intentionally left blank                                                                                                                                                                                                                            ˇˇ

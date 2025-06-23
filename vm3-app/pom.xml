@@ -4,8 +4,8 @@
                              http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>com.demo.vm1</groupId>
-    <artifactId>kafka-eclient1</artifactId>
+    <groupId>com.demo.vm3</groupId>
+    <artifactId>kafka-host</artifactId>
     <version>1.0</version>
 
     <properties>
@@ -35,7 +35,7 @@
                 <configuration>
                     <archive>
                         <manifest>
-                            <mainClass>com.demo.vm1.ChatClientApp</mainClass>
+                            <mainClass>com.demo.vm3.BrokerHandlerApp</mainClass>
                         </manifest>
                     </archive>
                     <descriptorRefs>

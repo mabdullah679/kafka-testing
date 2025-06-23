@@ -1,18 +1,18 @@
-FROM confluentinc/cp-kafka:7.4.0
+FROM maven:3.9.6-eclipse-temurin-21 AS builder
+
+WORKDIR /app
+COPY . .
+
+RUN mvn clean package -DskipTests
+
+# ------------------------------
+
+FROM eclipse-temurin:21-jdk
 WORKDIR /app
 
-# Copy scripts as root and fix permissions
-USER root
-COPY connect-to-broker.sh broker-handler.sh join-chat.sh ./
-RUN chmod +x connect-to-broker.sh broker-handler.sh join-chat.sh
+COPY --from=builder /app/target/kafka-host-1.0-jar-with-dependencies.jar ./app.jar
 
-# Optionally: ensure audit dir is writable
-RUN mkdir -p /app/audit && chmod -R 777 /app/audit
+# Main volume for audit logs
+VOLUME ["/app/logs"]
 
-# Stay as root to avoid permission issues with mounted volumes
-# (Safer unless you set up a dedicated user and manage volume ownership)
-USER root
-
-# Healthcheck and default command
-HEALTHCHECK --interval=10s --timeout=3s --start-period=5s CMD ["bash", "-c", "./broker-handler.sh --healthcheck"]
-CMD ["bash", "broker-handler.sh"]
+CMD ["bash"]
