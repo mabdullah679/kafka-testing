@@ -1,0 +1,195 @@
+🔧 Setting up aliases for Kafka testing environment...
+⚠️ Found legacy or invalid alias in /Users/macbookpro/.zshrc. Cleaning it up.
+✅ Cleaned invalid alias from /Users/macbookpro/.zshrc.
+✅ Alias already present in /Users/macbookpro/.zshrc for prov-kafka-test-env
+✅ Alias already present in /Users/macbookpro/.zshrc for clean
+✅ Alias already present in /Users/macbookpro/.zshrc for sendmsg
+⚠️ Found legacy or invalid alias in /Users/macbookpro/.bashrc. Cleaning it up.
+✅ Cleaned invalid alias from /Users/macbookpro/.bashrc.
+✅ Alias already present in /Users/macbookpro/.bashrc for prov-kafka-test-env
+✅ Alias already present in /Users/macbookpro/.bashrc for clean
+✅ Alias already present in /Users/macbookpro/.bashrc for sendmsg
+🎉 Alias setup attempted.
+   ➜ If you see warnings, try running: source ~/.zshrc OR source ~/.bashrc manually.
+   ➜ Once sourced, you can use: prov-kafka-test-env, clean, or sendmsg
+
+🚀 Running '/Volumes/DevXLab/Dev/kafka-testing/run-kafka-testing.sh'...
+🧼 Cleaning project metadata and artifacts...
+✅ Project cleaned successfully.
+🚀 First-time setup. Deploying...
+Compose can now delegate builds to bake for better performance.
+ To do so, set COMPOSE_BAKE=true.
+#0 building with "desktop-linux" instance using docker driver
+
+#1 [vm3-app internal] load build definition from Dockerfile
+#1 DONE 0.0s
+
+#2 [vm1-app internal] load build definition from Dockerfile
+#2 transferring dockerfile: 533B done
+#2 DONE 0.0s
+
+#1 [vm3-app internal] load build definition from Dockerfile
+#1 transferring dockerfile: 688B done
+#1 DONE 0.0s
+
+#3 [vm2-app internal] load build definition from Dockerfile
+#3 transferring dockerfile: 533B done
+#3 DONE 0.0s
+
+#4 [vm3-app internal] load metadata for docker.io/confluentinc/cp-kafka:7.4.0
+#4 DONE 0.0s
+
+#5 [vm3-app internal] load .dockerignore
+#5 transferring context: 53B done
+#5 DONE 0.0s
+
+#6 [vm3-app 1/5] FROM docker.io/confluentinc/cp-kafka:7.4.0@sha256:187dac6627e7906c350f5f8c982f80ce735ff1a0e571a20de6000a309a12ce63
+#6 resolve docker.io/confluentinc/cp-kafka:7.4.0@sha256:187dac6627e7906c350f5f8c982f80ce735ff1a0e571a20de6000a309a12ce63 0.0s done
+#6 DONE 0.0s
+
+#7 [vm3-app internal] load build context
+#7 transferring context: 111B done
+#7 DONE 0.0s
+
+#8 [vm3-app 4/5] RUN chmod +x connect-to-broker.sh broker-handler.sh join-chat.sh
+#8 CACHED
+
+#9 [vm3-app 2/5] WORKDIR /app
+#9 CACHED
+
+#10 [vm3-app 3/5] COPY connect-to-broker.sh broker-handler.sh join-chat.sh ./
+#10 CACHED
+
+#11 [vm3-app 5/5] RUN mkdir -p /app/audit && chmod -R 777 /app/audit
+#11 CACHED
+
+#12 [vm3-app] exporting to image
+#12 exporting layers 0.0s done
+#12 exporting manifest sha256:8035764ea443723705ec8bd4dd6059e0b28b474b4eb17399cdbf6a36f6bc6918 done
+#12 exporting config sha256:43a399c89cf186dd979544cb870fd7897e64e6c45e3d749b53310736d0eaede7 done
+#12 exporting attestation manifest sha256:67a10f3385831dd5aeccdbb4d0131d089e8fda9f1331bd472470f2404257f30d 0.0s done
+#12 exporting manifest list sha256:61b2ae5e8ccbe021849073fd71d409bb484f1b7df3d6fa0b6ceba49fb3d533e6 done
+#12 naming to docker.io/library/kafka-testing-vm3-app:latest done
+#12 unpacking to docker.io/library/kafka-testing-vm3-app:latest 0.0s done
+#12 DONE 0.1s
+
+#13 [vm2-app internal] load metadata for docker.io/library/eclipse-temurin:17-jdk-alpine
+#13 DONE 0.2s
+
+#14 [vm1-app internal] load .dockerignore
+#14 transferring context: 53B done
+#14 DONE 0.0s
+
+#15 [vm2-app internal] load .dockerignore
+#15 transferring context: 53B done
+#15 DONE 0.0s
+
+#16 [vm2-app 1/6] FROM docker.io/library/eclipse-temurin:17-jdk-alpine@sha256:ca5c0c9763d21cf1617cb68ef8c17228a202cd0358fa6d7510a1bbdbd49c74da
+#16 resolve docker.io/library/eclipse-temurin:17-jdk-alpine@sha256:ca5c0c9763d21cf1617cb68ef8c17228a202cd0358fa6d7510a1bbdbd49c74da 0.0s done
+#16 DONE 0.0s
+
+#17 [vm2-app internal] load build context
+#17 transferring context: 134B 0.0s done
+#17 DONE 0.0s
+
+#18 [vm1-app internal] load build context
+#18 transferring context: 134B 0.0s done
+#18 DONE 0.0s
+
+#19 [vm2-app 3/6] RUN apk add --no-cache curl bash tar gzip &&     curl -sSL https://archive.apache.org/dist/kafka/3.5.1/kafka_2.13-3.5.1.tgz -o /tmp/kafka.tgz &&     tar -xzf /tmp/kafka.tgz -C /opt &&     ln -s /opt/kafka_2.13-3.5.1 /opt/kafka
+#19 CACHED
+
+#20 [vm2-app 4/6] COPY target/*-jar-with-dependencies.jar app.jar
+#20 CACHED
+
+#21 [vm2-app 5/6] COPY send-msg.sh .
+#21 CACHED
+
+#22 [vm2-app 2/6] WORKDIR /app
+#22 CACHED
+
+#23 [vm2-app 6/6] RUN chmod +x send-msg.sh
+#23 CACHED
+
+#24 [vm1-app 5/6] COPY send-msg.sh .
+#24 CACHED
+
+#19 [vm1-app 3/6] RUN apk add --no-cache curl bash tar gzip &&     curl -sSL https://archive.apache.org/dist/kafka/3.5.1/kafka_2.13-3.5.1.tgz -o /tmp/kafka.tgz &&     tar -xzf /tmp/kafka.tgz -C /opt &&     ln -s /opt/kafka_2.13-3.5.1 /opt/kafka
+#19 CACHED
+
+#22 [vm1-app 2/6] WORKDIR /app
+#22 CACHED
+
+#25 [vm1-app 4/6] COPY target/*-jar-with-dependencies.jar app.jar
+#25 CACHED
+
+#26 [vm1-app 6/6] RUN chmod +x send-msg.sh
+#26 CACHED
+
+#27 [vm3-app] resolving provenance for metadata file
+#27 DONE 0.0s
+
+#28 [vm1-app] exporting to image
+#28 exporting layers done
+#28 exporting manifest sha256:de402377ee4a4108a191410bf7cb52793dc53c367c45ae3d7b65f4a119a39055 done
+#28 exporting config sha256:4111c61972724bbcc44e2ba1ae0e2ea35128ef4a07790b1ce4977052a68e7cdd done
+#28 exporting attestation manifest sha256:177754792c50a3767ca3cf579af09fe9a7271886e42440f7a449b62157417392 0.0s done
+#28 exporting manifest list sha256:5ec18c4c9429320f7e34a109071040f40bc1d189d79c412dc816b02a36e4e877 0.0s done
+#28 naming to docker.io/library/kafka-testing-vm1-app:latest done
+#28 unpacking to docker.io/library/kafka-testing-vm1-app:latest 0.0s done
+#28 DONE 0.1s
+
+#29 [vm2-app] exporting to image
+#29 exporting layers done
+#29 exporting manifest sha256:37f8f3fc5bf14a956226ab7797376656c70064eb16e5dd1ae442cd9123cd5e4a done
+#29 exporting config sha256:bd759370345319d56703c875b66519854d56629706f2e2e1f18a47cceb069c5c done
+#29 exporting attestation manifest sha256:cb644826daa434c473914b4a7569e30df4f60432f2d5f2a31de3ef5260bae822 0.0s done
+#29 exporting manifest list sha256:91336bdbf76f2fede7619fa2cef297b361b6f79945b444d5713b31a65b937c0d 0.0s done
+#29 naming to docker.io/library/kafka-testing-vm2-app:latest done
+#29 unpacking to docker.io/library/kafka-testing-vm2-app:latest 0.0s done
+#29 DONE 0.1s
+
+#30 [vm1-app] resolving provenance for metadata file
+#30 DONE 0.0s
+
+#31 [vm2-app] resolving provenance for metadata file
+#31 DONE 0.0s
+⏳ Waiting for vm3-app to report readiness...
+✅ vm3-app is healthy and broker handler is ready.
+🔁 Restarting kafka-testing-vm1-app...
+🔁 Restarting kafka-testing-vm2-app...
+💬 Broadcasting messages from vm1 and vm2 via broadcast-test-msgs.sh...
+📜 Function: Sends greeting messages to global.chat topic using kafka-console-producer
+------------------------------------------------------------
+📜 Function: Sends greeting messages to global.chat topic using kafka-console-producer
+------------------------------------------------------------
+📨 Sending message from vm1-app...
+❌ kafka-console-producer not found or not executable at /opt/kafka_2.13-3.5.1/bin/kafka-console-producer
+⚠️ Failed to send from vm1-app
+📨 Sending message from vm2-app...
+❌ kafka-console-producer not found in PATH
+⚠️ Failed to send from vm2-app
+------------------------------------------------------------
+📤 Harvesting logs...
+📦 Categorizing logs from vm1, vm2, and vm3...
+📡 Extracting audit messages from vm3-app...
+❌ kafka-testing-vm1-app has no logs or is unavailable.
+❌ kafka-testing-vm2-app has no logs or is unavailable.
+
+🔍 Logs from kafka-testing-vm3-app (vm3):
+🟢 [4b] Successful deployment:
+📡 Kafka broker handler is active.
+🟡 [4c] Buggy but live:
+WARNING: Due to limitations in metric names, topics with a period ('.') or underscore ('_') could collide. To avoid issues it is best to use either, but not both.
+[2025-06-22 19:35:46,856] WARN [AdminClient clientId=adminclient-1] Connection to node -1 (kafka/172.19.0.6:9092) could not be established. Broker may not be available. (org.apache.kafka.clients.NetworkClient)
+[2025-06-22 19:35:46,973] WARN [AdminClient clientId=adminclient-1] Connection to node -1 (kafka/172.19.0.6:9092) could not be established. Broker may not be available. (org.apache.kafka.clients.NetworkClient)
+[2025-06-22 19:35:47,176] WARN [AdminClient clientId=adminclient-1] Connection to node -1 (kafka/172.19.0.6:9092) could not be established. Broker may not be available. (org.apache.kafka.clients.NetworkClient)
+[2025-06-22 19:35:47,480] WARN [AdminClient clientId=adminclient-1] Connection to node -1 (kafka/172.19.0.6:9092) could not be established. Broker may not be available. (org.apache.kafka.clients.NetworkClient)
+[2025-06-22 19:35:47,986] WARN [AdminClient clientId=adminclient-1] Connection to node -1 (kafka/172.19.0.6:9092) could not be established. Broker may not be available. (org.apache.kafka.clients.NetworkClient)
+[2025-06-22 19:35:48,896] WARN [AdminClient clientId=adminclient-1] Connection to node -1 (kafka/172.19.0.6:9092) could not be established. Broker may not be available. (org.apache.kafka.clients.NetworkClient)
+[2025-06-22 19:35:49,807] WARN [AdminClient clientId=adminclient-1] Connection to node -1 (kafka/172.19.0.6:9092) could not be established. Broker may not be available. (org.apache.kafka.clients.NetworkClient)
+[2025-06-22 19:35:50,717] WARN [AdminClient clientId=adminclient-1] Connection to node -1 (kafka/172.19.0.6:9092) could not be established. Broker may not be available. (org.apache.kafka.clients.NetworkClient)
+[2025-06-22 19:35:51,727] WARN [AdminClient clientId=adminclient-1] Connection to node -1 (kafka/172.19.0.6:9092) could not be established. Broker may not be available. (org.apache.kafka.clients.NetworkClient)
+
+❌ No transmission logs found in vm3.
+

@@ -1,0 +1,54 @@
+.
+|____.DS_Store
+|____._.DS_Store
+|____README.md
+|____diagnostics
+| |____vm1-app.java
+| |____compose.yml.txt
+| |____vm1-dockerfile.txt
+| |____vm2-pom.txt
+| |____vm2-app.java
+| |____vm1-pom.txt
+| |____vm2-dockerfile.txt
+| |____structure.txt
+|____docker-compose.yml
+|____._docker-compose.yml
+|____vm1-app
+| |____Dockerfile
+| |____._Dockerfile
+| |____pom.xml
+| |____._pom.xml
+| |____src
+| | |____main
+| | | |____java
+| | | | |____com
+| | | | | |____demo
+| | | | | | |____vm1
+| | | | | | | |____ProducerApp.java
+| | | | | | | |____._ProducerApp.java
+|____vm2-app
+| |____Dockerfile
+| |____pom.xml
+| |____._pom.xml
+| |____src
+| | |____main
+| | | |____java
+| | | | |____com
+| | | | | |____demo
+| | | | | | |____vm2
+| | | | | | | |____ConsumerApp.java
+| | | | | | | |____._ConsumerApp.java
+|____.idea
+| |____.gitignore
+| |____._.gitignore
+| |____workspace.xml
+| |____._workspace.xml
+| |____modules.xml
+| |____._modules.xml
+| |____kafka-testing.iml
+| |____._kafka-testing.iml
+| |____misc.xml
+| |____._misc.xml
+|____._.idea
+|____run-kafka-testing.sh
+|____._run-kafka-testing.sh
